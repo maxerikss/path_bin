@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+#################################
+Help()
+{
+    echo "-----------------------------------------------------"
+    echo "This script creates a template for a latex document."
+    echo
+    echo "Syntax: template [-h|l|e|c|u] projectName"
+    echo
+    echo "projectName will be the name of the directory with the latex files."
+    echo
+    echo "Options:"
+    echo "h     Prints help"
+    echo "l     Creates lab report template"
+    echo "e     Creates exercise template"
+    echo "c     Opens the LaTeX project in vscode"
+    echo "u     Sets the path to the templates"
+    echo "-----------------------------------------------------"
+}
+#################################
+
+vscode=false
+config="template.config"
+type=""
+
+while  getopts "hlecu:" option; do
+    case $option in
+        # Displays help
+        h) 
+        Help
+        exit;;
+
+        # Use lab template
+        l) 
+        type="lab";;
+
+        # use exercise template
+        e) 
+        type="exercise";;
+        
+        # open the template in vscode
+        c) 
+        vscode=true;;
+
+        # updates the path to the templates
+        u)
+        echo "$OPTARG" > template.config;;
+
+        ?)
+        echo "Use option -h for help."
+        exit;;
+    esac
+done
+
+# Check if no options were passed
+if [ $OPTIND -eq 1 ]; then
+    echo "Error: No options were passed. Use option -h for help."
+    exit 1
+fi
+
+# Removes the option arguments
+shift $((OPTIND - 1))
+
+# Check if project name is provided
+if [ -z "$1" ] && [ "$type" != "" ]; then
+    echo "Error: Project name is required."
+    exit 1
+fi
+
+while IFS= read -r line
+do
+  template_dir=$line
+done < "$config"
+
+
+# Check if the directory and templates exist
+if [ ! -d "$template_dir" ]; then
+    echo "Error: Template directory '$template_dir' does not exist."
+fi
+
+if [ ! -d "$template_dir/Lab Report Template" ] || [ ! -d "$template_dir/Exercise Template" ]; then
+    echo "Error: One or more required templates are missing in the directory '$template_dir'."
+    exit 1
+fi
+
+
+# Creats the project
+if [ "$type" == "lab" ]; then
+     cp -R "$template_dir/Lab Report Template" "$1"
+     echo "Lab report project created with name $1"
+elif [ "$type" == "exercise" ]; then
+     cp -R "$template_dir/Exercise Template" "$1"
+     echo "Exercise project created with name $1"
+fi
+
+# Opens the project in vscode
+if [ $vscode == true ]; then
+    code -n "$1"
+fi
