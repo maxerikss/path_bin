@@ -27,9 +27,9 @@ post_data = {
     "assertion": f"{API_key}"     
 }
 
-access_request = requests.post(post_url, headers=post_headers, data=post_data)
+access = requests.post(post_url, headers=post_headers, data=post_data)
 
-access_data = access_request.json()
+access_data = access.json()
 bearer_token = access_data.get("access_token")
 
 
@@ -40,10 +40,28 @@ get_headers = {
 }
 
 library_response = requests.get(library_url, headers=get_headers)
-stock_response = requests.get(stock_url, headers=get_headers)
 
+all_pages = False
+stock_response = []
+stock_response.append(requests.get(stock_url, headers=get_headers))
+while not all_pages:
+    link_header = stock_response[-1].headers.get("Link")
+    if link_header == None:
+        all_pages = True
+    else:
+        links = link_header.split(", ")
+        next_url = None
+        for link in links:
+            url, rel = link.split("; ")
+            if 'rel="next"' in rel:
+                next_url = url.strip("<>")
+        stock_response.append(requests.get(next_url, headers=get_headers))
+
+# Data of the products and the inventory balance
 products_data = library_response.json().get("products")
-stock_data = stock_response.json()
+stock_data = []
+for i in stock_response:
+    stock_data.extend(i.json())
 
 # +---------------------------------------------+
 # | ######  ##          ###     ######   ###### |
@@ -79,7 +97,7 @@ for i in products_data:
         i.get("name"),
         i.get("category").get("name"),
         i.get('variants')[0].get("price").get("amount")/100,
-        0
+        "--"
         )
     )
 
@@ -87,11 +105,9 @@ for i in stock_data:
     uuid = i.get("productUuid")
     balance = i.get("balance")
     for j in list_products:
-        if j.uuid == uuid:
+        if j.uuid == uuid and j.category in ["Beer", "Cider", "Wine"]:
             j.balance = balance
-        if j.category not in["Wine", "Beer", "Cider"]:
-            j.balance = "--"
-
+        
 
 for i in list_products:
     print("--------------------------")
