@@ -26,13 +26,56 @@ access_data = access_request.json()
 bearer_token = access_data.get("access_token")
 
 
-get_url = "https://products.izettle.com/organizations/self/library"
+library_url = "https://products.izettle.com/organizations/self/library"
+stock_url = "https://inventory.izettle.com/v3/stock"
 get_headers = {
     "Authorization": f"Bearer {bearer_token}",  
 }
-response = requests.get(get_url, headers=get_headers)
 
-data = response.text
-#df = pd.json_normalize(data)
+library_response = requests.get(library_url, headers=get_headers)
+stock_response = requests.get(stock_url, headers=get_headers)
 
-print(data.keys)
+products_data = library_response.json().get("products")
+stock_data = stock_response.json()
+
+class Product:
+    def __init__(self, uuid, name, category, price, balance):
+        self.uuid = uuid
+        self.name = name
+        self.category = category
+        self.price = price
+        self.balance = balance
+    
+    def print(self):
+        print(f"UUID: {self.uuid}")
+        print(f"Name: {self.name}")
+        print(f"Category: {self.category}")
+        print(f"Price: {self.price}")
+        print(f"Balance: {self.balance}")
+
+list_products = []
+
+
+for i in products_data:
+    list_products.append(Product(
+        i.get("uuid"),
+        i.get("name"),
+        i.get("category").get("name"),
+        i.get('variants')[0].get("price").get("amount")/100,
+        0
+        )
+    )
+
+for i in stock_data:
+    uuid = i.get("productUuid")
+    balance = i.get("balance")
+    for j in list_products:
+        if j.uuid == uuid:
+            j.balance = balance
+        if j.category not in["Wine", "Beer", "Cider"]:
+            j.balance = "--"
+
+
+for i in list_products:
+    print("--------------------------")
+    i.print()
